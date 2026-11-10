@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f0f13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="卡夾">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>行動卡夾</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg: #0f0f13;
+    --surface: #1a1a24;
+    --surface2: #24243a;
+    --accent: #7c6ef7;
+    --accent2: #a78bfa;
+    --text: #f0eeff;
+    --text2: #9b97b8;
+    --text3: #5e5a7a;
+    --danger: #f07575;
+    --success: #5dcaa5;
+    --warn: #ef9f27;
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+  }
+  html, body { height: 100%; background: var(--bg); }
+  body { color: var(--text); font-family: 'Noto Sans TC', system-ui, -apple-system, 'PingFang TC', 'Microsoft JhengHei', sans-serif; overscroll-behavior: none; }
+  button { font-family: inherit; }
+  [hidden] { display: none !important; }
+
+  .app { position: relative; max-width: 480px; height: 100vh; height: 100dvh; margin: 0 auto; display: flex; flex-direction: column; overflow: hidden; }
+  .header { flex: none; padding: calc(var(--sat) + 14px) 20px 10px; background: linear-gradient(180deg, #13131e 0%, transparent 100%); }
+  .title-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+  .title { font-size: 24px; font-weight: bold; }
+  .count { font-size: 12px; color: var(--text3); }
+  .search { width: 100%; padding: 11px 14px; background: var(--surface); border: 1px solid var(--surface2); border-radius: 10px; color: var(--text); font-size: 16px; font-family: inherit; -webkit-appearance: none; appearance: none; }
+  .search:focus, .form-input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+  .tabs { display: flex; gap: 8px; margin-top: 12px; overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { padding: 6px 16px; border-radius: 20px; border: 1px solid var(--surface2); background: var(--surface); color: var(--text2); font-size: 13px; cursor: pointer; white-space: nowrap; }
+  .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .content { flex: 1; overflow-y: auto; padding: 8px 20px 120px; -webkit-overflow-scrolling: touch; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .cards { display: flex; flex-direction: column; gap: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--surface2); border-left: 4px solid var(--c, var(--accent)); border-radius: 12px; padding: 14px; display: flex; gap: 12px; align-items: center; cursor: pointer; }
+  .card:active { background: var(--surface2); }
+  .card-icon { font-size: 26px; width: 44px; height: 44px; flex: none; display: grid; place-items: center; border-radius: 12px; background: var(--surface2); background: color-mix(in srgb, var(--c, var(--accent)) 18%, transparent); }
+  .card-info { flex: 1; min-width: 0; }
+  .card-name { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-meta { font-size: 12px; color: var(--text2); margin-top: 4px; }
+  .badge { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 4px; margin-left: 8px; }
+  .badge.expired { background: rgba(240,117,117,.15); color: var(--danger); }
+  .badge.soon { background: rgba(239,159,39,.15); color: var(--warn); }
+  .badge.ok { background: rgba(93,202,165,.15); color: var(--success); }
+  .card-actions { display: flex; gap: 6px; }
+  .btn-icon { background: var(--surface2); border: none; color: var(--text); cursor: pointer; width: 36px; height: 36px; border-radius: 8px; font-size: 14px; }
+  .btn-icon.on { background: rgba(239,159,39,.2); }
+  .empty { text-align: center; padding: 48px 20px; color: var(--text3); line-height: 1.8; font-size: 14px; }
+
+  .banner { margin: 8px 0 12px; padding: 12px 14px; background: rgba(239,159,39,.12); border: 1px solid rgba(239,159,39,.35); border-radius: 10px; font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 10px; }
+  .banner span { flex: 1; line-height: 1.5; }
+  .banner button { background: var(--warn); color: #1a1205; border: none; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 13px; cursor: pointer; }
+
+  .fab { position: absolute; right: 20px; bottom: calc(64px + var(--sab) + 16px); width: 56px; height: 56px; border-radius: 50%; background: var(--accent); border: none; color: #fff; font-size: 26px; cursor: pointer; box-shadow: 0 4px 12px rgba(124,110,247,.4); z-index: 5; }
+  .bottom-nav { flex: none; background: var(--bg); border-top: 1px solid var(--surface2); display: flex; padding-bottom: var(--sab); }
+  .nav-item { position: relative; flex: 1; padding: 10px 0 8px; text-align: center; cursor: pointer; color: var(--text2); font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .nav-item .ni { font-size: 18px; }
+  .nav-item.active { color: var(--accent2); }
+  .nav-badge { position: absolute; top: 4px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--danger); color: #fff; font-size: 10px; line-height: 16px; }
+
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; z-index: 100; align-items: flex-end; justify-content: center; }
+  .modal.show { display: flex; }
+  .modal-box { background: var(--surface); width: 100%; max-width: 480px; max-height: 92vh; max-height: 92dvh; overflow-y: auto; border-radius: 24px 24px 0 0; padding: 24px 20px calc(24px + var(--sab)); }
+  .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 20px; }
+  .form-group { margin-bottom: 16px; }
+  .form-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; display: block; }
+  .form-input { width: 100%; padding: 12px 14px; background: var(--bg); border: 1px solid var(--surface2); border-radius: 10px; color: var(--text); font-size: 16px; font-family: inherit; }
+  textarea.form-input { resize: vertical; min-height: 72px; }
+  .hint { font-size: 12px; color: var(--warn); margin-top: 6px; line-height: 1.5; }
+  .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .type-btn { padding: 10px; border-radius: 10px; border: 1px solid var(--surface2); background: var(--bg); color: var(--text2); cursor: pointer; font-size: 14px; }
+  .type-btn.on { border-color: var(--accent); background: rgba(124,110,247,.12); color: var(--accent2); }
+  .swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+  .swatch { width: 32px; height: 32px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+  .swatch.on { border-color: #fff; box-shadow: 0 0 0 2px var(--surface); }
+  .imgs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .imgbox { position: relative; aspect-ratio: 1.6; border: 1px dashed var(--text3); border-radius: 10px; display: grid; place-items: center; color: var(--text2); font-size: 13px; cursor: pointer; overflow: hidden; background: var(--bg); }
+  .imgbox img { width: 100%; height: 100%; object-fit: cover; }
+  .imgbox .x { position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; border-radius: 50%; border: none; background: rgba(0,0,0,.65); color: #fff; cursor: pointer; }
+  .btn-primary { width: 100%; padding: 13px; background: var(--accent); border: none; color: #fff; font-size: 16px; font-weight: 600; border-radius: 10px; cursor: pointer; margin-top: 12px; }
+  .btn-primary.ghost { background: var(--surface2); color: var(--text2); margin-top: 8px; }
+  .btn-primary.danger { background: transparent; color: var(--danger); border: 1px solid rgba(240,117,117,.4); margin-top: 8px; }
+  .btn-primary.sm { padding: 10px; font-size: 14px; margin-top: 10px; }
+
+  .sheet-head { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .d-name { font-size: 18px; font-weight: 700; word-break: break-word; }
+  .row { display: flex; align-items: center; gap: 8px; padding: 12px 0; border-top: 1px solid var(--surface2); }
+  .row .k { width: 56px; flex: none; font-size: 12px; color: var(--text2); }
+  .row .v { flex: 1; min-width: 0; word-break: break-all; white-space: pre-wrap; font-size: 15px; }
+  .chip { background: var(--surface2); border: none; color: var(--text); padding: 6px 10px; border-radius: 8px; font-size: 12px; cursor: pointer; flex: none; }
+  .photos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .photos img { width: 100%; border-radius: 10px; cursor: zoom-in; display: block; }
+
+  .viewer { position: fixed; inset: 0; z-index: 200; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 24px; gap: 16px; }
+  .viewer.show { display: flex; }
+  .viewer.dark { background: rgba(0,0,0,.95); }
+  .viewer.light { background: #fff; color: #111; }
+  .viewer img { max-width: 100%; max-height: 85vh; max-height: 85dvh; border-radius: 8px; }
+  .bc { width: 100%; max-width: 480px; }
+  .bc svg { width: 100%; height: 160px; display: block; }
+  .qr { width: min(78vw, 360px); }
+  .qr svg { width: 100%; height: auto; display: block; border-radius: 8px; }
+  .scan-row { display: flex; gap: 8px; margin-top: 8px; }
+  .scan-row .chip { flex: 1; padding: 11px 10px; font-size: 14px; }
+  #scanner { position: fixed; inset: 0; z-index: 250; background: #000; display: none; flex-direction: column; align-items: center; }
+  #scanner.show { display: flex; }
+  .scan-top { width: 100%; max-width: 480px; display: flex; align-items: center; justify-content: space-between; padding: calc(var(--sat) + 14px) 20px 14px; color: #fff; font-size: 15px; }
+  #scan-view { position: relative; width: 100%; max-width: 480px; flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  #scan-view video { width: 100%; height: 100%; object-fit: cover; }
+  .scan-frame { position: absolute; left: 8%; right: 8%; top: 50%; height: 32%; transform: translateY(-50%); border: 2px solid var(--accent2); border-radius: 12px; box-shadow: 0 0 0 100vmax rgba(0,0,0,.5); pointer-events: none; }
+  .scan-hint { color: #bbb; font-size: 13px; padding: 16px 20px calc(var(--sab) + 20px); text-align: center; }
+  .bc-name { font-size: 18px; font-weight: 700; }
+  .bc-num { font-size: 22px; letter-spacing: 2px; font-variant-numeric: tabular-nums; word-break: break-all; text-align: center; }
+  .bc-hint { font-size: 12px; color: #777; }
+
+  .set-box { padding: 14px; background: var(--surface); border-radius: 12px; margin-bottom: 12px; }
+  .set-title { font-weight: 600; }
+  .set-desc { font-size: 12px; color: var(--text2); margin-top: 4px; line-height: 1.6; }
+
+  #lock { position: fixed; inset: 0; z-index: 300; background: var(--bg); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; }
+  #lock.show { display: flex; }
+  #lock .big { font-size: 44px; }
+  #lock input { width: 200px; text-align: center; letter-spacing: 10px; font-size: 24px; }
+  #lock-msg { min-height: 20px; font-size: 13px; color: var(--danger); }
+
+  #toast { position: fixed; left: 50%; bottom: calc(var(--sab) + 90px); transform: translateX(-50%) translateY(10px); background: #2d2d48; color: var(--text); padding: 10px 16px; border-radius: 10px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 400; max-width: 88vw; text-align: center; }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  @media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="header">
+    <div class="title-row"><div class="title">行動卡夾</div><div class="count" id="count"></div></div>
+    <div id="filters">
+      <input type="search" class="search" placeholder="搜尋名稱、卡號、備註…" id="search" autocomplete="off">
+      <div class="tabs" id="tabs"></div>
+    </div>
+  </header>
+
+  <main class="content" id="content">
+    <div id="banner"></div>
+    <section class="page active" id="page-cards"><div class="cards" id="cards"></div></section>
+    <section class="page" id="page-category"><div class="cards" id="category"></div></section>
+    <section class="page" id="page-expiry"><div class="cards" id="expiry"></div></section>
+    <section class="page" id="page-settings"><div id="settings"></div></section>
+  </main>
+
+  <button class="fab" id="fab" data-act="add" aria-label="新增卡片">＋</button>
+
+  <nav class="bottom-nav">
+    <div class="nav-item active" data-act="nav" data-i="0"><span class="ni">🎫</span>卡夾</div>
+    <div class="nav-item" data-act="nav" data-i="1"><span class="ni">📂</span>分類</div>
+    <div class="nav-item" data-act="nav" data-i="2"><span class="ni">⏰</span>到期<span class="nav-badge" id="nav-badge" hidden></span></div>
+    <div class="nav-item" data-act="nav" data-i="3"><span class="ni">⚙️</span>設定</div>
+  </nav>
+</div>
+
+<!-- 新增 / 編輯 -->
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <div class="modal-title" id="modal-title">新增卡片</div>
+    <div class="form-group">
+      <label class="form-label" for="f-name">卡片名稱</label>
+      <input type="text" class="form-input" id="f-name" placeholder="例：7-11 會員卡" maxlength="100" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label class="form-label">類別</label>
+      <div class="type-grid" id="f-types"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">顏色</label>
+      <div class="swatches" id="f-colors"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="f-number">卡號／條碼內容（選填）</label>
+      <input type="text" class="form-input" id="f-number" placeholder="1234 5678 9012" maxlength="500" autocomplete="off" autocapitalize="off">
+      <div class="scan-row">
+        <button type="button" class="chip" data-act="importimg">🖼️ 導入圖片</button>
+        <button type="button" class="chip" data-act="scan">📷 掃描</button>
+      </div>
+      <input type="file" id="f-import" accept="image/*" hidden>
+      <div class="hint" id="num-hint" hidden>信用卡、證件建議只記末 4 碼或編號，請勿儲存 CVV、密碼。</div>
+    </div>
+    <div class="form-group" id="code-group">
+      <label class="form-label">結帳時的顯示方式</label>
+      <div class="type-grid" id="f-codes"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="f-expiry">到期日（選填）</label>
+      <input type="month" class="form-input" id="f-expiry">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="f-note">備註（選填）</label>
+      <textarea class="form-input" id="f-note" placeholder="使用規則、客服電話等…" maxlength="1000"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">卡片照片（選填，僅存在這台裝置）</label>
+      <div class="imgs" id="f-imgs"></div>
+      <input type="file" id="f-img-front" accept="image/*" hidden>
+      <input type="file" id="f-img-back" accept="image/*" hidden>
+    </div>
+    <button class="btn-primary" data-act="save">儲存</button>
+    <button class="btn-primary ghost" data-act="cancel">取消</button>
+    <button class="btn-primary danger" id="btn-delete" data-act="delete" hidden>刪除這張卡片</button>
+  </div>
+</div>
+
+<!-- 通用底部面板（詳細、PIN、還原） -->
+<div class="modal" id="sheet"><div class="modal-box" id="sheet-body"></div></div>
+
+<!-- 條碼 / 照片全螢幕檢視 -->
+<div class="viewer" id="viewer" data-act="closeviewer"></div>
+
+<!-- PIN 鎖 -->
+<div id="lock">
+  <div class="big">🔒</div>
+  <div>輸入 PIN 解鎖</div>
+  <input type="password" inputmode="numeric" maxlength="6" class="form-input" id="lock-input" autocomplete="off">
+  <div id="lock-msg"></div>
+</div>
+
+<!-- 相機掃描 -->
+<div id="scanner">
+  <div class="scan-top"><span>對準條碼或 QR Code</span><button class="chip" data-act="scanstop">取消</button></div>
+  <div id="scan-view"></div>
+  <div class="scan-hint" id="scan-hint">掃到後會自動填入</div>
+</div>
+<div id="scan-hidden" style="position:absolute;left:-9999px;top:0;width:300px;height:300px;overflow:hidden" aria-hidden="true"></div>
+
+<div id="toast" role="status"></div>
+<input type="file" id="restore-file" accept=".json,application/json" hidden>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+
+/* ───────── 常數 ───────── */
+const TYPES = [
+  { key: 'member', label: '會員卡', icon: '🏪', color: '#5dcaa5' },
+  { key: 'credit', label: '信用卡', icon: '💳', color: '#7c6ef7' },
+  { key: 'id',     label: '證件',   icon: '🪪', color: '#4da3ff' },
+  { key: 'ticket', label: '票券',   icon: '🎟️', color: '#ef9f27' },
+  { key: 'other',  label: '其他',   icon: '📋', color: '#e879b9' },
+];
+const COLORS = ['#7c6ef7', '#5dcaa5', '#4da3ff', '#ef9f27', '#e879b9', '#f07575'];
+const LS = { BACKUP: 'wallet_last_backup', PIN: 'wallet_pin' };
+const SENSITIVE = ['credit', 'id'];
+
+// Code 128 條碼圖樣（0–102 資料、103–105 起始、106 結尾）
+const C128 = ['212222','222122','222221','121223','121322','131222','122213','122312','132212','221213','221312','231212','112232','122132','122231','113222','123122','123221','223211','221132','221231','213212','223112','312131','311222','321122','321221','312212','322112','322211','212123','212321','232121','111323','131123','131321','112313','132113','132311','211313','231113','231311','112133','112331','132131','113123','113321','133121','313121','211331','231131','213113','213311','213131','311123','311321','331121','312113','312311','332111','314111','221411','431111','111224','111422','121124','121421','141122','141221','112214','112412','122114','122411','142112','142211','241211','221114','413111','241112','134111','111242','121142','121241','114212','124112','124211','411212','421112','421211','212141','214121','412121','111143','111341','131141','114113','114311','411113','411311','113141','114131','311141','411131','211412','211214','211232','2331112'];
+
+/* ───────── 狀態 ───────── */
+let db = null, cards = [];
+let page = 0, activeTab = 'all', query = '';
+let editingId = null, selectedType = 'member', selectedColor = '#5dcaa5', colorTouched = false, selectedCode = 'code128';
+let formImgs = { front: '', back: '' };
+let detailId = null, revealed = false;
+let pendingImport = null;
+let pinCfg = loadPinCfg();
+let hiddenAt = 0, fails = 0, lockedUntil = 0;
+let persisted = null, deferredInstall = null, wakeLock = null;
+
+/* ───────── 工具 ───────── */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+const typeOf = c => TYPES.find(t => t.key === c.type) || TYPES[TYPES.length - 1];
+const colorOf = c => c.color || typeOf(c).color;
+const byId = id => cards.find(c => c.id === id);
+const localDate = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+const maskNum = n => { const d = String(n).replace(/\s+/g, ''); return d.length <= 4 ? d : '•'.repeat(d.length - 4) + d.slice(-4); };
+
+let toastTimer;
+function toast(msg, ms = 2200) {
+  const el = $('toast'); el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+}
+
+/* ───────── IndexedDB ───────── */
+const DB_NAME = 'wallet-db', STORE = 'cards';
+function openDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(DB_NAME, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore(STORE, { keyPath: 'id' });
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+const reqP = r => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+const store = mode => db.transaction(STORE, mode).objectStore(STORE);
+const dbAll = () => db ? reqP(store('readonly').getAll()) : Promise.resolve([]);
+const dbPut = c => db ? reqP(store('readwrite').put(c)) : Promise.resolve();
+const dbDel = id => db ? reqP(store('readwrite').delete(id)) : Promise.resolve();
+function dbReplaceAll(list) {
+  if (!db) return Promise.resolve();
+  return new Promise((res, rej) => {
+    const t = db.transaction(STORE, 'readwrite'); const s = t.objectStore(STORE);
+    s.clear(); list.forEach(c => s.put(c));
+    t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+  });
+}
+
+/* ───────── 資料驗證（匯入／舊資料共用）───────── */
+function sanitize(r) {
+  if (!r || typeof r !== 'object') return null;
+  const s = (v, max = 500) => typeof v === 'string' ? v.slice(0, max) : '';
+  const name = s(r.name, 100).trim();
+  if (!name) return null;
+  const img = v => typeof v === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(v) ? v : '';
+  const now = Date.now();
+  return {
+    id: s(r.id, 64) || uid(),
+    name,
+    type: TYPES.some(t => t.key === r.type) ? r.type : 'other',
+    color: COLORS.includes(r.color) ? r.color : '',
+    number: s(r.number, 500),
+    codeType: r.codeType === 'qr' ? 'qr' : 'code128',
+    expiry: /^\d{4}-\d{2}$/.test(r.expiry || '') ? r.expiry : '',
+    note: s(r.note, 1000),
+    imgFront: img(r.imgFront),
+    imgBack: img(r.imgBack),
+    pinned: !!r.pinned,
+    createdAt: Number(r.createdAt) || now,
+    updatedAt: Number(r.updatedAt) || now,
+  };
+}
+
+// 舊版內建的三張範例卡片，搬資料時略過，已搬進來的也會清掉一次
+const SAMPLES = [
+  { id: '1', name: '全家 FamiPay', number: '9876 5432 1000' },
+  { id: '2', name: '國泰世華卡', number: '4567 xxxx xxxx 8901' },
+  { id: '3', name: '身分證', number: 'A12345678' },
+];
+const isSample = c => SAMPLES.some(x => x.id === c.id && x.name === c.name && x.number === c.number);
+
+// 把舊版存在 localStorage 的資料搬進 IndexedDB（只搬一次，並保留一份舊資料備份）
+async function migrateLegacy() {
+  if (!db) return;
+  const n = await reqP(store('readonly').count());
+  if (n > 0) return;
+  const raw = localStorage.getItem('cards');
+  if (!raw) return;
+  try {
+    const arr = JSON.parse(raw);
+    if (Array.isArray(arr)) {
+      await dbReplaceAll(arr.map(sanitize).filter(c => c && !isSample(c)));
+      localStorage.setItem('cards_legacy_backup', raw);
+      localStorage.removeItem('cards');
+    }
+  } catch (e) { console.error(e); }
+}
+
+/* ───────── 到期計算 ───────── */
+function expInfo(c) {
+  if (!/^\d{4}-\d{2}$/.test(c.expiry || '')) return null;
+  const [y, m] = c.expiry.split('-').map(Number);
+  const end = new Date(y, m, 1).getTime();            // 到期月份的下個月 1 號 00:00，當月整月都有效
+  const now = Date.now();
+  if (now >= end) return { status: 'expired', days: -Math.max(1, Math.ceil((now - end) / 864e5)), text: '已過期' };
+  const days = Math.ceil((end - now) / 864e5);
+  if (days <= 30) return { status: 'soon', days, text: `剩 ${days} 天` };
+  return { status: 'ok', days, text: '有效' };
+}
+const daysText = d => d < 0 ? `已過期 ${-d} 天` : d > 60 ? `還有約 ${Math.round(d / 30)} 個月` : `還有 ${d} 天`;
+
+/* ───────── 渲染 ───────── */
+function render() { renderTabs(); renderList(); renderCategory(); renderExpiry(); renderBanner(); if (page === 3) renderSettings(); $('count').textContent = cards.length ? `共 ${cards.length} 張` : ''; }
+
+function renderTabs() {
+  const tabs = [{ key: 'all', label: '全部' }, ...TYPES];
+  $('tabs').innerHTML = tabs.map(t => `<div class="tab${activeTab === t.key ? ' active' : ''}" data-act="tab" data-key="${t.key}">${t.label}</div>`).join('');
+}
+
+function cardHTML(c) {
+  const t = typeOf(c), ei = expInfo(c);
+  const badge = ei ? `<span class="badge ${ei.status}">${esc(ei.text)}</span>` : '';
+  return `<div class="card" data-act="open" data-id="${esc(c.id)}" style="--c:${esc(colorOf(c))}">
+    <div class="card-icon">${t.icon}</div>
+    <div class="card-info">
+      <div class="card-name">${c.pinned ? '⭐ ' : ''}${esc(c.name)}</div>
+      <div class="card-meta">${t.label}${c.expiry ? ' · ' + esc(c.expiry) : ''}${badge}</div>
+    </div>
+    <div class="card-actions">
+      <button class="btn-icon${c.pinned ? ' on' : ''}" data-act="pin" data-id="${esc(c.id)}" aria-label="置頂">${c.pinned ? '★' : '☆'}</button>
+      <button class="btn-icon" data-act="edit" data-id="${esc(c.id)}" aria-label="編輯">✏️</button>
+    </div>
+  </div>`;
+}
+
+function renderList() {
+  const q = query.trim().toLowerCase();
+  const list = [...cards]
+    .filter(c => (activeTab === 'all' || c.type === activeTab) &&
+      (!q || [c.name, c.number, c.note, typeOf(c).label].some(v => (v || '').toLowerCase().includes(q))))
+    .sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || (b.updatedAt - a.updatedAt));
+  $('cards').innerHTML = list.length ? list.map(cardHTML).join('')
+    : `<div class="empty">${cards.length ? '找不到符合的卡片' : '🪪 還沒有卡片<br>點右下角 ＋ 新增第一張'}</div>`;
+}
+
+function renderCategory() {
+  $('category').innerHTML = TYPES.map(t => {
+    const n = cards.filter(c => c.type === t.key).length;
+    return `<div class="card" data-act="cat" data-key="${t.key}" style="--c:${t.color}">
+      <div class="card-icon">${t.icon}</div>
+      <div class="card-info"><div class="card-name">${t.label}</div><div class="card-meta">${n} 張卡片</div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderExpiry() {
+  const list = cards.filter(c => expInfo(c)).sort((a, b) => a.expiry.localeCompare(b.expiry));
+  $('expiry').innerHTML = list.length ? list.map(c => {
+    const ei = expInfo(c), t = typeOf(c);
+    const color = ei.status === 'expired' ? 'var(--danger)' : ei.status === 'soon' ? 'var(--warn)' : 'var(--success)';
+    return `<div class="card" data-act="open" data-id="${esc(c.id)}" style="--c:${esc(colorOf(c))}">
+      <div class="card-icon">${t.icon}</div>
+      <div class="card-info"><div class="card-name">${esc(c.name)}</div><div class="card-meta">${esc(c.expiry)} · ${daysText(ei.days)}</div></div>
+      <div style="color:${color};font-size:12px;font-weight:600;white-space:nowrap">${ei.text}</div>
+    </div>`;
+  }).join('') : '<div class="empty">🔔 沒有設定到期日的卡片</div>';
+
+  const urgent = cards.filter(c => { const e = expInfo(c); return e && e.status !== 'ok'; }).length;
+  const b = $('nav-badge'); b.hidden = !urgent; b.textContent = urgent;
+}
+
+function renderBanner() {
+  const last = Number(localStorage.getItem(LS.BACKUP) || 0);
+  const days = last ? Math.floor((Date.now() - last) / 864e5) : null;
+  if (!cards.length || (days !== null && days < 30)) { $('banner').innerHTML = ''; return; }
+  $('banner').innerHTML = `<div class="banner"><span>${days === null ? '資料只存在這台裝置，建議先備份一份。' : `已經 ${days} 天沒有備份了。`}</span><button data-act="backup">立即備份</button></div>`;
+}
+
+async function renderSettings() {
+  let usage = '';
+  try { const e = await navigator.storage.estimate(); usage = `目前使用約 ${(e.usage / 1048576).toFixed(1)} MB。`; } catch {}
+  const last = Number(localStorage.getItem(LS.BACKUP) || 0);
+  const lastTxt = last ? new Date(last).toLocaleString('zh-TW', { hour12: false }) : '尚未備份';
+  const persistTxt = persisted === true ? '瀏覽器已承諾保留這份資料。' : persisted === false ? '瀏覽器可能在空間不足時清除資料，請定期備份。' : '';
+  $('settings').innerHTML = `
+    <div class="set-box">
+      <div class="set-title">備份與還原</div>
+      <div class="set-desc">上次備份：${esc(lastTxt)}<br>備份檔包含所有卡片與照片，請妥善保管。</div>
+      <button class="btn-primary sm" data-act="backup">💾 備份（下載或分享）</button>
+      <button class="btn-primary sm ghost" data-act="restore">📥 從備份檔還原</button>
+    </div>
+    <div class="set-box">
+      <div class="set-title">PIN 鎖</div>
+      <div class="set-desc">${pinCfg ? '已啟用。離開 App 超過 30 秒會自動上鎖。' : '開啟後，進入 App 需輸入 PIN。'}<br>這只能擋住旁人直接翻看，資料在瀏覽器內並未加密。忘記 PIN 時只能清除網站資料（卡片也會一併消失），請先備份。</div>
+      ${pinCfg
+        ? `<button class="btn-primary sm ghost" data-act="pinsheet" data-key="change">更改 PIN</button><button class="btn-primary sm danger" data-act="pinsheet" data-key="remove">移除 PIN</button>`
+        : `<button class="btn-primary sm" data-act="pinsheet" data-key="set">設定 PIN</button>`}
+    </div>
+    <div class="set-box">
+      <div class="set-title">儲存狀態</div>
+      <div class="set-desc">所有資料都存在這台裝置的瀏覽器（IndexedDB），不會上傳到任何伺服器，離線也能使用。${esc(usage)}${esc(persistTxt)}<br>iPhone 請用 Safari「分享 → 加入主畫面」，資料才不會被系統因久未使用而清除。</div>
+      ${deferredInstall ? '<button class="btn-primary sm" data-act="install">📲 安裝到主畫面</button>' : ''}
+    </div>
+    <div class="set-box">
+      <div class="set-title">清除全部資料</div>
+      <div class="set-desc">刪除這台裝置上的所有卡片，無法復原。</div>
+      <button class="btn-primary sm danger" data-act="clearall">🗑️ 全部清除</button>
+    </div>`;
+}
+
+/* ───────── 分頁 ───────── */
+function switchPage(i) {
+  page = i;
+  document.querySelectorAll('.page').forEach((p, idx) => p.classList.toggle('active', idx === i));
+  document.querySelectorAll('.nav-item').forEach((n, idx) => n.classList.toggle('active', idx === i));
+  $('filters').hidden = i !== 0;
+  $('fab').hidden = i !== 0;
+  $('banner').hidden = i === 3;
+  $('content').scrollTop = 0;
+  if (i === 3) renderSettings();
+}
+
+/* ───────── 新增 / 編輯 ───────── */
+function openForm(id) {
+  closeSheet();
+  const c = id ? byId(id) : null;
+  editingId = c ? c.id : null;
+  selectedType = c ? c.type : 'member';
+  selectedColor = c ? colorOf(c) : typeOf({ type: selectedType }).color;
+  colorTouched = !!(c && c.color);
+  selectedCode = c?.codeType === 'qr' ? 'qr' : 'code128';
+  formImgs = { front: c?.imgFront || '', back: c?.imgBack || '' };
+  $('modal-title').textContent = c ? '編輯卡片' : '新增卡片';
+  $('f-name').value = c?.name || '';
+  $('f-number').value = c?.number || '';
+  $('f-expiry').value = c?.expiry || '';
+  $('f-note').value = c?.note || '';
+  $('btn-delete').hidden = !c;
+  renderForm();
+  $('modal').classList.add('show');
+  $('modal').querySelector('.modal-box').scrollTop = 0;
+  if (!c) setTimeout(() => $('f-name').focus(), 50);
+}
+
+function renderForm() {
+  $('f-types').innerHTML = TYPES.map(t => `<button type="button" class="type-btn${selectedType === t.key ? ' on' : ''}" data-act="type" data-key="${t.key}">${t.icon} ${t.label}</button>`).join('');
+  $('f-colors').innerHTML = COLORS.map(col => `<div class="swatch${selectedColor === col ? ' on' : ''}" style="background:${col}" data-act="color" data-key="${col}"></div>`).join('');
+  $('num-hint').hidden = !SENSITIVE.includes(selectedType);
+  $('code-group').hidden = SENSITIVE.includes(selectedType);
+  $('f-codes').innerHTML = [['code128', '📶 一般條碼'], ['qr', '▦ QR Code']].map(([k, l]) => `<button type="button" class="type-btn${selectedCode === k ? ' on' : ''}" data-act="code" data-key="${k}">${l}</button>`).join('');
+  $('f-imgs').innerHTML = ['front', 'back'].map(side => {
+    const label = side === 'front' ? '正面' : '背面';
+    return formImgs[side]
+      ? `<div class="imgbox" data-act="pickimg" data-key="${side}"><img src="${formImgs[side]}" alt="${label}"><button type="button" class="x" data-act="clearimg" data-key="${side}" aria-label="移除${label}照片">✕</button></div>`
+      : `<div class="imgbox" data-act="pickimg" data-key="${side}">＋ ${label}照片</div>`;
+  }).join('');
+}
+
+async function fileToDataURL(file, max = 1280, q = 0.82) {
+  const bmp = await createImageBitmap(file);
+  const s = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  const cv = document.createElement('canvas');
+  cv.width = Math.round(bmp.width * s); cv.height = Math.round(bmp.height * s);
+  cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+  if (bmp.close) bmp.close();
+  return cv.toDataURL('image/jpeg', q);
+}
+
+['front', 'back'].forEach(side => {
+  $('f-img-' + side).addEventListener('change', async e => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    try { formImgs[side] = await fileToDataURL(f); renderForm(); }
+    catch (err) { console.error(err); toast('無法讀取這張照片，請換一張試試'); }
+  });
+});
+
+async function saveCard() {
+  const name = $('f-name').value.trim();
+  if (!name) { toast('請輸入卡片名稱'); $('f-name').focus(); return; }
+  const old = editingId ? byId(editingId) : null;
+  const now = Date.now();
+  const card = {
+    id: editingId || uid(), name, type: selectedType, color: colorTouched ? selectedColor : '',
+    number: $('f-number').value.trim(), codeType: selectedCode, expiry: $('f-expiry').value, note: $('f-note').value.trim(),
+    imgFront: formImgs.front, imgBack: formImgs.back,
+    pinned: old ? !!old.pinned : false, createdAt: old?.createdAt || now, updatedAt: now,
+  };
+  try { await dbPut(card); }
+  catch (e) { console.error(e); toast('儲存失敗，可能是裝置空間不足'); return; }
+  cards = old ? cards.map(c => c.id === card.id ? card : c) : [card, ...cards];
+  closeModal(); render(); toast('已儲存');
+}
+
+async function deleteCard() {
+  const c = byId(editingId);
+  if (!c || !confirm(`確定要刪除「${c.name}」？此動作無法復原。`)) return;
+  await dbDel(c.id);
+  cards = cards.filter(x => x.id !== c.id);
+  closeModal(); render(); toast('已刪除');
+}
+
+function closeModal() { $('modal').classList.remove('show'); }
+
+async function togglePin(id) {
+  const c = byId(id); if (!c) return;
+  c.pinned = !c.pinned;
+  await dbPut(c); render();
+}
+
+/* ───────── 詳細 ───────── */
+function openSheet(html) { $('sheet-body').innerHTML = html; $('sheet').classList.add('show'); }
+function closeSheet() { $('sheet').classList.remove('show'); }
+
+function openDetail(id) {
+  const c = byId(id); if (!c) return;
+  detailId = id; revealed = false;
+  const t = typeOf(c), ei = expInfo(c);
+  const sens = SENSITIVE.includes(c.type);
+  const canBarcode = !!c.number && !sens;
+  let h = `<div class="sheet-head" style="--c:${esc(colorOf(c))}"><div class="card-icon">${t.icon}</div><div><div class="d-name">${esc(c.name)}</div><div class="card-meta">${t.label}</div></div></div>`;
+  if (c.number) h += `<div class="row"><div class="k">卡號</div><div class="v" id="numv">${esc(sens ? maskNum(c.number) : c.number)}</div>${sens ? '<button class="chip" data-act="reveal">顯示</button>' : ''}<button class="chip" data-act="copy">複製</button></div>`;
+  if (ei) h += `<div class="row"><div class="k">到期</div><div class="v">${esc(c.expiry)}<span class="badge ${ei.status}">${esc(daysText(ei.days))}</span></div></div>`;
+  if (c.note) h += `<div class="row"><div class="k">備註</div><div class="v">${esc(c.note)}</div></div>`;
+  if (c.imgFront || c.imgBack) h += `<div class="photos">${c.imgFront ? '<img src="' + c.imgFront + '" alt="正面" data-act="img" data-key="front">' : ''}${c.imgBack ? '<img src="' + c.imgBack + '" alt="背面" data-act="img" data-key="back">' : ''}</div>`;
+  if (canBarcode) h += `<button class="btn-primary" data-act="barcode">${c.codeType === 'qr' ? '▦ 顯示 QR Code' : '📶 顯示條碼'}</button>`;
+  h += `<button class="btn-primary ghost" data-act="edit" data-id="${esc(c.id)}">編輯</button><button class="btn-primary ghost" data-act="closesheet">關閉</button>`;
+  openSheet(h);
+}
+
+async function copyNumber() {
+  const c = byId(detailId); if (!c) return;
+  try { await navigator.clipboard.writeText(c.number); toast('已複製卡號'); }
+  catch { toast('無法自動複製，請長按卡號手動複製'); }
+}
+
+/* ───────── 條碼 & 檢視 ───────── */
+function code128Svg(text) {
+  const vals = [104];
+  for (const ch of text) { const v = ch.charCodeAt(0) - 32; if (v < 0 || v > 94) return null; vals.push(v); }
+  let sum = 104; for (let i = 1; i < vals.length; i++) sum += i * vals[i];
+  vals.push(sum % 103, 106);
+  let x = 10, bars = '';
+  for (const v of vals) {
+    let isBar = true;
+    for (const w of C128[v]) { const n = +w; if (isBar) bars += `<rect x="${x}" y="0" width="${n}" height="100"/>`; x += n; isBar = !isBar; }
+  }
+  return `<svg viewBox="0 0 ${x + 10} 100" preserveAspectRatio="none" shape-rendering="crispEdges" fill="#000" role="img" aria-label="條碼">${bars}</svg>`;
+}
+
+/* ───────── QR Code 產生器（位元組模式、容錯等級 M、版本 1–29，自動選遮罩）───────── */
+function qrMatrix(text) {
+  const ECC = [-1,10,16,26,18,24,16,18,22,22,26,30,22,22,24,24,28,28,26,26,26,26,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28];
+  const NB  = [-1,1,1,1,2,2,4,4,4,5,5,5,8,9,9,10,10,11,13,14,16,17,17,18,20,21,23,25,26,28,29,31,33,35,37,38,40,43,45,47,49];
+  const raw = v => { let r = (16 * v + 128) * v + 64; if (v >= 2) { const a = Math.floor(v / 7) + 2; r -= (25 * a - 10) * a - 55; if (v >= 7) r -= 36; } return r; };
+  const cap = v => Math.floor(raw(v) / 8) - ECC[v] * NB[v];
+  const data = Array.from(new TextEncoder().encode(text));
+  let ver = 1;
+  for (; ver <= 29; ver++) if (4 + (ver < 10 ? 8 : 16) + data.length * 8 <= cap(ver) * 8) break;
+  if (ver > 29) return null;
+
+  // 1) 組出資料位元
+  const bits = [];
+  const push = (val, len) => { for (let i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
+  push(4, 4); push(data.length, ver < 10 ? 8 : 16); data.forEach(b => push(b, 8));
+  const capBits = cap(ver) * 8;
+  push(0, Math.min(4, capBits - bits.length));
+  push(0, (8 - bits.length % 8) % 8);
+  for (let pad = 0xEC; bits.length < capBits; pad ^= 0xEC ^ 0x11) push(pad, 8);
+  const cw = [];
+  for (let i = 0; i < bits.length; i += 8) { let b = 0; for (let j = 0; j < 8; j++) b = (b << 1) | bits[i + j]; cw.push(b); }
+
+  // 2) Reed-Solomon 錯誤更正
+  const mul = (x, y) => { let z = 0; for (let i = 7; i >= 0; i--) { z = (z << 1) ^ ((z >>> 7) * 0x11D); z ^= ((y >>> i) & 1) * x; } return z; };
+  const eccLen = ECC[ver], nb = NB[ver];
+  const div = new Array(eccLen).fill(0); div[eccLen - 1] = 1;
+  for (let i = 0, root = 1; i < eccLen; i++) {
+    for (let j = 0; j < eccLen; j++) { div[j] = mul(div[j], root); if (j + 1 < eccLen) div[j] ^= div[j + 1]; }
+    root = mul(root, 2);
+  }
+  const rem = d => { const r = new Array(eccLen).fill(0); for (const b of d) { const f = b ^ r.shift(); r.push(0); div.forEach((c, i) => { r[i] ^= mul(c, f); }); } return r; };
+  const total = Math.floor(raw(ver) / 8), numShort = nb - total % nb, shortLen = Math.floor(total / nb);
+  const blocks = [];
+  for (let i = 0, k = 0; i < nb; i++) {
+    const len = shortLen - eccLen + (i < numShort ? 0 : 1);
+    const d = cw.slice(k, k + len); k += len;
+    const e = rem(d); if (i < numShort) d.push(0);
+    blocks.push(d.concat(e));
+  }
+  const all = [];
+  for (let i = 0; i < blocks[0].length; i++) blocks.forEach((b, j) => { if (i !== shortLen - eccLen || j >= numShort) all.push(b[i]); });
+
+  // 3) 畫出圖樣
+  const size = ver * 4 + 17;
+  const m = Array.from({ length: size }, () => new Array(size).fill(false));
+  const fn = Array.from({ length: size }, () => new Array(size).fill(false));
+  const set = (x, y, dark) => { m[y][x] = dark; fn[y][x] = true; };
+  for (let i = 0; i < size; i++) { set(6, i, i % 2 === 0); set(i, 6, i % 2 === 0); }
+  const finder = (cx, cy) => {
+    for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+      const d = Math.max(Math.abs(dx), Math.abs(dy)), x = cx + dx, y = cy + dy;
+      if (x >= 0 && x < size && y >= 0 && y < size) set(x, y, d !== 2 && d !== 4);
+    }
+  };
+  finder(3, 3); finder(size - 4, 3); finder(3, size - 4);
+  if (ver > 1) {
+    const n = Math.floor(ver / 7) + 2, step = ver === 32 ? 26 : Math.ceil((ver * 4 + 4) / (n * 2 - 2)) * 2;
+    const pos = [6]; for (let p = size - 7; pos.length < n; p -= step) pos.splice(1, 0, p);
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      if ((i === 0 && j === 0) || (i === 0 && j === n - 1) || (i === n - 1 && j === 0)) continue;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) set(pos[i] + dx, pos[j] + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+    }
+  }
+  const drawFormat = mask => {
+    const d = mask; let r = d;                       // 容錯等級 M 的格式位元為 00
+    for (let i = 0; i < 10; i++) r = (r << 1) ^ ((r >>> 9) * 0x537);
+    const f = ((d << 10) | r) ^ 0x5412, bit = i => ((f >>> i) & 1) !== 0;
+    for (let i = 0; i <= 5; i++) set(8, i, bit(i));
+    set(8, 7, bit(6)); set(8, 8, bit(7)); set(7, 8, bit(8));
+    for (let i = 9; i < 15; i++) set(14 - i, 8, bit(i));
+    for (let i = 0; i < 8; i++) set(size - 1 - i, 8, bit(i));
+    for (let i = 8; i < 15; i++) set(8, size - 15 + i, bit(i));
+    set(8, size - 8, true);
+  };
+  drawFormat(0);
+  if (ver >= 7) {
+    let r = ver; for (let i = 0; i < 12; i++) r = (r << 1) ^ ((r >>> 11) * 0x1F25);
+    const v = (ver << 12) | r;
+    for (let i = 0; i < 18; i++) { const c = ((v >>> i) & 1) !== 0, a = size - 11 + i % 3, b = Math.floor(i / 3); set(a, b, c); set(b, a, c); }
+  }
+  // 填入資料位元（之字形）
+  for (let i = 0, right = size - 1; right >= 1; right -= 2) {
+    if (right === 6) right = 5;
+    for (let vert = 0; vert < size; vert++) for (let j = 0; j < 2; j++) {
+      const x = right - j, y = ((right + 1) & 2) === 0 ? size - 1 - vert : vert;
+      if (!fn[y][x] && i < all.length * 8) { m[y][x] = ((all[i >>> 3] >>> (7 - (i & 7))) & 1) !== 0; i++; }
+    }
+  }
+
+  // 4) 選遮罩
+  const MASKS = [(x,y)=>(x+y)%2===0,(x,y)=>y%2===0,(x,y)=>x%3===0,(x,y)=>(x+y)%3===0,(x,y)=>(Math.floor(x/3)+Math.floor(y/2))%2===0,(x,y)=>x*y%2+x*y%3===0,(x,y)=>(x*y%2+x*y%3)%2===0,(x,y)=>((x+y)%2+x*y%3)%2===0];
+  const applyMask = k => { for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (!fn[y][x] && MASKS[k](x, y)) m[y][x] = !m[y][x]; };
+  const penalty = () => {
+    let p = 0, dark = 0;
+    const line = get => {
+      let run = 1, hist = '';
+      for (let i = 0; i < size; i++) {
+        const c = get(i); hist += c ? '1' : '0';
+        if (i > 0 && c === get(i - 1)) { run++; if (run === 5) p += 3; else if (run > 5) p++; } else run = 1;
+      }
+      for (let i = 0; i + 11 <= size; i++) { const s = hist.substr(i, 11); if (s === '10111010000' || s === '00001011101') p += 40; }
+    };
+    for (let y = 0; y < size; y++) line(i => m[y][i]);
+    for (let x = 0; x < size; x++) line(i => m[i][x]);
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      if (m[y][x]) dark++;
+      if (x < size - 1 && y < size - 1 && m[y][x] === m[y][x+1] && m[y][x] === m[y+1][x] && m[y][x] === m[y+1][x+1]) p += 3;
+    }
+    p += (Math.ceil(Math.abs(dark * 20 - size * size * 10) / (size * size)) - 1) * 10;
+    return p;
+  };
+  let best = 0, bestP = Infinity;
+  for (let k = 0; k < 8; k++) { applyMask(k); drawFormat(k); const p = penalty(); if (p < bestP) { bestP = p; best = k; } applyMask(k); }
+  applyMask(best); drawFormat(best);
+  return m;
+}
+
+function qrSvg(text) {
+  const m = qrMatrix(text); if (!m) return null;
+  const n = m.length, q = 4; let d = '';
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (m[y][x]) d += `M${x + q} ${y + q}h1v1h-1z`;
+  return `<svg viewBox="0 0 ${n + q * 2} ${n + q * 2}" shape-rendering="crispEdges" role="img" aria-label="QR Code"><rect width="100%" height="100%" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
+}
+
+async function lockScreen() { try { wakeLock = await navigator.wakeLock?.request('screen'); } catch {} }
+function unlockScreen() { try { wakeLock?.release(); } catch {} wakeLock = null; }
+
+function showBarcode() {
+  const c = byId(detailId); if (!c) return;
+  const isQr = c.codeType === 'qr';
+  const svg = isQr ? qrSvg(c.number) : code128Svg(c.number.replace(/\s+/g, ''));
+  if (!svg) { toast(isQr ? '內容太長，無法產生 QR Code' : '卡號含有無法轉成條碼的字元'); return; }
+  $('viewer').className = 'viewer light show';
+  $('viewer').innerHTML = `<div class="bc-name">${esc(c.name)}</div><div class="${isQr ? 'qr' : 'bc'}">${svg}</div><div class="bc-num"${c.number.length > 40 ? ' style="font-size:13px;letter-spacing:0"' : ''}>${esc(c.number)}</div><div class="bc-hint">點一下任意處關閉 ｜ 格式：${isQr ? 'QR Code' : 'Code 128'}</div>`;
+  lockScreen();
+}
+function showImage(side) {
+  const c = byId(detailId); const src = c && (side === 'front' ? c.imgFront : c.imgBack);
+  if (!src) return;
+  $('viewer').className = 'viewer dark show';
+  $('viewer').innerHTML = `<img src="${src}" alt="卡片照片">`;
+}
+function closeViewer() { $('viewer').classList.remove('show'); $('viewer').innerHTML = ''; unlockScreen(); }
+
+/* ───────── 掃描與導入 ───────── */
+// 優先用瀏覽器內建的 BarcodeDetector（不需網路）；不支援時（例如 iPhone Safari）才載入 html5-qrcode。
+// 想完全自架：把 html5-qrcode.min.js 放在 index.html 同一個資料夾，就會優先使用它，不再連外部網址。
+const LIB_SOURCES = ['./html5-qrcode.min.js', 'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js'];
+let libPromise = null, scanStop = null, scanSession = 0;
+const hasNative = () => 'BarcodeDetector' in window;
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const el = document.createElement('script'); el.src = src;
+    if (src.startsWith('http')) el.crossOrigin = 'anonymous';
+    el.onload = () => window.Html5Qrcode ? res() : (el.remove(), rej(new Error('no lib')));
+    el.onerror = () => { el.remove(); rej(new Error('load fail')); };
+    document.head.appendChild(el);
+  });
+}
+function loadScanLib() {
+  if (window.Html5Qrcode) return Promise.resolve();
+  if (!libPromise) libPromise = (async () => {
+    for (const src of LIB_SOURCES) { try { await loadScript(src); return; } catch {} }
+    throw new Error('lib unavailable');
+  })().catch(e => { libPromise = null; throw e; });
+  return libPromise;
+}
+
+function applyScan(text, fmt) {
+  const f = String(fmt || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const useQr = f === 'qrcode' || /[^\x20-\x7e]/.test(text);   // 含中文等字元的只能用 QR 呈現
+  $('f-number').value = text.slice(0, 500);
+  selectedCode = useQr ? 'qr' : 'code128';
+  renderForm();
+  toast(`已讀取：${useQr ? 'QR Code' : '條碼'}`);
+}
+
+function scanErr(e) {
+  const msg = String((e && e.message) || e || '');
+  if (/NotAllowed|Permission|Security/i.test(msg)) return '沒有相機權限，請到瀏覽器或系統設定允許使用相機';
+  if (/NotFound|Devices not found/i.test(msg)) return '找不到可用的相機';
+  if (msg === 'lib unavailable') return '需要網路載入掃描元件，請連線後再試一次';
+  return '無法啟動相機';
+}
+
+async function scanNative(sid) {
+  const det = new BarcodeDetector();
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+  const stopTracks = () => stream.getTracks().forEach(t => t.stop());
+  if (sid !== scanSession) { stopTracks(); return; }
+  const video = document.createElement('video');
+  video.setAttribute('playsinline', ''); video.muted = true; video.srcObject = stream;
+  const frame = document.createElement('div'); frame.className = 'scan-frame';
+  $('scan-view').replaceChildren(video, frame);
+  try { await video.play(); } catch (e) { stopTracks(); throw e; }
+  let busy = false;
+  const timer = setInterval(async () => {
+    if (busy || video.readyState < 2) return;
+    busy = true;
+    try { const r = await det.detect(video); if (r.length && r[0].rawValue) onScanned(r[0].rawValue, r[0].format); } catch {}
+    busy = false;
+  }, 200);
+  scanStop = async () => { clearInterval(timer); stopTracks(); video.srcObject = null; };
+  if (sid !== scanSession) { const st = scanStop; scanStop = null; await st(); }
+}
+
+async function scanLib(sid) {
+  await loadScanLib();
+  if (sid !== scanSession) return;
+  const h = new Html5Qrcode('scan-view', { verbose: false, useBarCodeDetectorIfSupported: true });
+  await h.start({ facingMode: 'environment' },
+    { fps: 10, qrbox: (w, hh) => ({ width: Math.floor(w * 0.85), height: Math.floor(Math.min(hh, w) * 0.5) }) },
+    (text, res) => onScanned(text, res && res.result && res.result.format && res.result.format.formatName),
+    () => {});
+  scanStop = async () => { try { await h.stop(); } catch {} try { h.clear(); } catch {} };
+  if (sid !== scanSession) { const st = scanStop; scanStop = null; await st(); }
+}
+
+async function startScan() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('這個瀏覽器不支援相機掃描'); return; }
+  const sid = ++scanSession;
+  $('scan-view').innerHTML = ''; $('scan-hint').textContent = '啟動相機中…'; $('scanner').classList.add('show');
+  try {
+    if (hasNative()) await scanNative(sid); else await scanLib(sid);
+    if (sid === scanSession) $('scan-hint').textContent = '掃到後會自動填入';
+  } catch (e) {
+    console.error(e);
+    if (sid !== scanSession) return;
+    await closeScanner(); toast(scanErr(e), 3500);
+  }
+}
+
+async function closeScanner() {
+  scanSession++;
+  $('scanner').classList.remove('show');
+  const st = scanStop; scanStop = null;
+  if (st) await st();
+  $('scan-view').innerHTML = '';
+}
+
+function onScanned(text, fmt) {
+  if (!text || !$('scanner').classList.contains('show')) return;
+  closeScanner(); applyScan(text, fmt);
+  if (navigator.vibrate) navigator.vibrate(60);
+}
+
+async function importImage(file) {
+  toast('讀取圖片中…', 1500);
+  let res = null;
+  if (hasNative()) {
+    try {
+      const bmp = await createImageBitmap(file);
+      try { const r = await new BarcodeDetector().detect(bmp); if (r.length && r[0].rawValue) res = { text: r[0].rawValue, format: r[0].format }; }
+      finally { if (bmp.close) bmp.close(); }
+    } catch (e) { console.error(e); }
+  }
+  if (!res) {
+    try {
+      await loadScanLib();
+      const h = new Html5Qrcode('scan-hidden', { verbose: false, useBarCodeDetectorIfSupported: true });
+      try {
+        if (h.scanFileV2) { const r = await h.scanFileV2(file, false); res = { text: r.decodedText, format: r.result && r.result.format && r.result.format.formatName }; }
+        else res = { text: await h.scanFile(file, false), format: '' };
+      } finally { try { h.clear(); } catch {} }
+    } catch (e) {
+      console.error(e);
+      toast(!hasNative() && String(e && e.message) === 'lib unavailable' ? '需要網路載入辨識元件，請連線後再試一次' : '圖片裡找不到條碼或 QR Code，請換一張更清楚的圖片', 3500);
+      return;
+    }
+  }
+  if (res && res.text) applyScan(res.text, res.format);
+  else toast('圖片裡找不到條碼或 QR Code，請換一張更清楚的圖片', 3500);
+}
+$('f-import').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) importImage(f); });
+
+/* ───────── 備份與還原 ───────── */
+function markBackup() { localStorage.setItem(LS.BACKUP, String(Date.now())); renderBanner(); if (page === 3) renderSettings(); }
+
+async function backup() {
+  if (!cards.length) { toast('目前沒有卡片可備份'); return; }
+  const payload = { app: 'mobile-wallet', version: 2, exportedAt: new Date().toISOString(), cards };
+  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+  const name = `wallet_backup_${localDate()}.json`;
+  try {
+    const file = new File([blob], name, { type: 'application/json' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: '行動卡夾備份' });
+      markBackup(); return;
+    }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  markBackup(); toast('備份檔已下載');
+}
+
+$('restore-file').addEventListener('change', e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const j = JSON.parse(ev.target.result);
+      const arr = Array.isArray(j) ? j : j.cards;
+      if (!Array.isArray(arr)) throw new Error('bad');
+      const list = arr.map(sanitize).filter(Boolean);
+      if (!list.length) { toast('備份檔裡沒有可用的卡片'); return; }
+      pendingImport = list;
+      openSheet(`<div class="modal-title">還原 ${list.length} 張卡片</div>
+        <div class="set-desc" style="margin-bottom:12px">目前裝置上有 ${cards.length} 張卡片。要怎麼處理？</div>
+        <button class="btn-primary" data-act="restore-merge">合併（相同卡片以備份檔為準）</button>
+        <button class="btn-primary danger" data-act="restore-replace">取代全部（先清空現有卡片）</button>
+        <button class="btn-primary ghost" data-act="closesheet">取消</button>`);
+    } catch { toast('檔案格式錯誤，無法還原'); }
+  };
+  reader.readAsText(f);
+});
+
+async function doRestore(mode) {
+  if (!pendingImport) return;
+  let next;
+  if (mode === 'replace') next = pendingImport;
+  else { const m = new Map(cards.map(c => [c.id, c])); pendingImport.forEach(c => m.set(c.id, c)); next = [...m.values()]; }
+  try { await dbReplaceAll(next); } catch (e) { console.error(e); toast('還原失敗，可能是裝置空間不足'); return; }
+  cards = next; pendingImport = null;
+  closeSheet(); render(); toast(`已還原，目前共 ${cards.length} 張`);
+}
+
+async function clearAll() {
+  if (!confirm('確定要清除所有卡片？此動作無法復原。')) return;
+  if (!confirm('再確認一次：真的全部刪除嗎？（建議先備份）')) return;
+  await dbReplaceAll([]); cards = []; render(); toast('已清除全部資料');
+}
+
+/* ───────── PIN 鎖 ───────── */
+function loadPinCfg() { try { return JSON.parse(localStorage.getItem(LS.PIN) || 'null'); } catch { return null; } }
+const b64 = u8 => btoa(String.fromCharCode(...u8));
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function hashPin(pin, salt) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 150000, hash: 'SHA-256' }, key, 256);
+  return b64(new Uint8Array(bits));
+}
+async function setPin(pin) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  pinCfg = { salt: b64(salt), hash: await hashPin(pin, salt), len: pin.length };
+  localStorage.setItem(LS.PIN, JSON.stringify(pinCfg));
+}
+async function checkPin(pin) { return !pinCfg || (await hashPin(pin, unb64(pinCfg.salt))) === pinCfg.hash; }
+
+function showLock() {
+  if (!pinCfg) return;
+  $('lock').classList.add('show'); $('lock-input').value = ''; $('lock-msg').textContent = '';
+  setTimeout(() => $('lock-input').focus(), 80);
+}
+async function tryUnlock() {
+  const v = $('lock-input').value;
+  if (Date.now() < lockedUntil) { $('lock-msg').textContent = `嘗試次數過多，請稍後再試`; $('lock-input').value = ''; return; }
+  if (await checkPin(v)) { fails = 0; $('lock').classList.remove('show'); $('lock-input').blur(); }
+  else {
+    fails++; $('lock-input').value = '';
+    if (fails >= 5) { lockedUntil = Date.now() + 30000; fails = 0; $('lock-msg').textContent = '錯誤次數過多，請 30 秒後再試'; }
+    else $('lock-msg').textContent = 'PIN 不正確';
+  }
+}
+$('lock-input').addEventListener('input', e => {
+  e.target.value = e.target.value.replace(/\D/g, '');
+  if (pinCfg && e.target.value.length === pinCfg.len) tryUnlock();
+});
+$('lock-input').addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { hiddenAt = Date.now(); if ($('scanner').classList.contains('show')) closeScanner(); }
+  else if (pinCfg && hiddenAt && Date.now() - hiddenAt > 30000) showLock();
+});
+
+function openPinSheet(mode) {
+  const field = (id, label) => `<div class="form-group"><label class="form-label">${label}</label><input class="form-input" id="${id}" type="password" inputmode="numeric" maxlength="6" autocomplete="off"></div>`;
+  const title = { set: '設定 PIN', change: '更改 PIN', remove: '移除 PIN' }[mode];
+  openSheet(`<div class="modal-title">${title}</div>`
+    + (mode !== 'set' ? field('pin-old', '目前的 PIN') : '')
+    + (mode !== 'remove' ? field('pin-new', '新 PIN（4–6 位數字）') + field('pin-new2', '再輸入一次') : '')
+    + `<button class="btn-primary" data-act="submitpin" data-key="${mode}">確定</button><button class="btn-primary ghost" data-act="closesheet">取消</button>`);
+}
+async function submitPin(mode) {
+  const v = id => ($(id) ? $(id).value : '');
+  if (mode !== 'set' && !(await checkPin(v('pin-old')))) return toast('目前的 PIN 不正確');
+  if (mode === 'remove') { pinCfg = null; localStorage.removeItem(LS.PIN); closeSheet(); renderSettings(); return toast('已移除 PIN'); }
+  const n = v('pin-new');
+  if (!/^\d{4,6}$/.test(n)) return toast('PIN 必須是 4–6 位數字');
+  if (n !== v('pin-new2')) return toast('兩次輸入不一致');
+  await setPin(n); closeSheet(); renderSettings(); toast('PIN 已設定');
+}
+
+/* ───────── 事件 ───────── */
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el) {
+    if (e.target === $('modal')) closeModal();
+    else if (e.target === $('sheet')) closeSheet();
+    return;
+  }
+  const { act, id, key, i } = el.dataset;
+  switch (act) {
+    case 'nav': switchPage(Number(i)); break;
+    case 'add': openForm(null); break;
+    case 'open': openDetail(id); break;
+    case 'edit': openForm(id || detailId); break;
+    case 'pin': togglePin(id); break;
+    case 'tab': activeTab = key; renderTabs(); renderList(); break;
+    case 'cat': activeTab = key; switchPage(0); renderTabs(); renderList(); break;
+    case 'type': selectedType = key; if (!colorTouched) selectedColor = typeOf({ type: key }).color; renderForm(); break;
+    case 'code': selectedCode = key; renderForm(); break;
+    case 'importimg': $('f-import').click(); break;
+    case 'scan': startScan(); break;
+    case 'scanstop': closeScanner(); break;
+    case 'color': selectedColor = key; colorTouched = true; renderForm(); break;
+    case 'pickimg': $('f-img-' + key).click(); break;
+    case 'clearimg': formImgs[key] = ''; renderForm(); break;
+    case 'save': saveCard(); break;
+    case 'cancel': closeModal(); break;
+    case 'delete': deleteCard(); break;
+    case 'reveal': { const c = byId(detailId); revealed = !revealed; $('numv').textContent = revealed ? c.number : maskNum(c.number); el.textContent = revealed ? '隱藏' : '顯示'; break; }
+    case 'copy': copyNumber(); break;
+    case 'barcode': showBarcode(); break;
+    case 'img': showImage(key); break;
+    case 'closesheet': closeSheet(); break;
+    case 'closeviewer': closeViewer(); break;
+    case 'backup': backup(); break;
+    case 'restore': $('restore-file').click(); break;
+    case 'restore-merge': doRestore('merge'); break;
+    case 'restore-replace': doRestore('replace'); break;
+    case 'pinsheet': openPinSheet(key); break;
+    case 'submitpin': submitPin(key); break;
+    case 'clearall': clearAll(); break;
+    case 'install': deferredInstall.prompt(); deferredInstall = null; renderSettings(); break;
+  }
+});
+
+$('search').addEventListener('input', e => { query = e.target.value; renderList(); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if ($('scanner').classList.contains('show')) closeScanner();
+  else if ($('viewer').classList.contains('show')) closeViewer();
+  else if ($('sheet').classList.contains('show')) closeSheet();
+  else if ($('modal').classList.contains('show')) closeModal();
+});
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; if (page === 3) renderSettings(); });
+
+/* ───────── 啟動 ───────── */
+(async function init() {
+  try {
+    db = await openDB(); await migrateLegacy(); cards = await dbAll();
+    if (!localStorage.getItem('wallet_samples_cleaned')) {
+      const samples = cards.filter(isSample);
+      for (const c of samples) await dbDel(c.id);
+      cards = cards.filter(c => !isSample(c));
+      localStorage.setItem('wallet_samples_cleaned', '1');
+    }
+  }
+  catch (e) { console.error(e); db = null; toast('⚠️ 無法使用本機資料庫（可能是無痕模式），資料不會被保存', 5000); }
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().then(v => { persisted = v; if (page === 3) renderSettings(); }).catch(() => {});
+  switchPage(0); render(); showLock();
+  if (!hasNative() && navigator.onLine) setTimeout(() => loadScanLib().catch(() => {}), 4000);
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>
