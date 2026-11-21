@@ -1,4 +1,4 @@
-const CACHE = 'wallet-v3';
+const CACHE = 'wallet-v4';
 const LIB_CACHE = 'wallet-lib-v1';
 const LIB_PREFIX = 'https://cdn.jsdelivr.net/npm/html5-qrcode@';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
